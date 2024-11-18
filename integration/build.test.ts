@@ -66,6 +66,10 @@ async function listOutputFiles() {
 async function matchOutputFiles(name: string) {
   const files = await listOutputFiles();
 
+  expect(Object.keys(files).join("\n")).toMatchFile(
+    join(__dirname, "__file_snapshots__", name, ".files")
+  );
+
   for (const [path, content] of Object.entries(files)) {
     expect(content).toMatchFile(
       join(__dirname, "__file_snapshots__", name, path)

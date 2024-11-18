@@ -1,0 +1,6 @@
+dist/dot.file.cjs
+dist/dot.file.mjs
+dist/index.cjs
+dist/index.mjs
+dist/dot.folder/index.cjs
+dist/dot.folder/index.mjs

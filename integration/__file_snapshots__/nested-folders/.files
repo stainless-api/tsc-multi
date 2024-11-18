@@ -1,0 +1,8 @@
+dist/constants.cjs
+dist/constants.mjs
+dist/index.cjs
+dist/index.mjs
+dist/name.cjs
+dist/name.mjs
+dist/print/index.cjs
+dist/print/index.mjs

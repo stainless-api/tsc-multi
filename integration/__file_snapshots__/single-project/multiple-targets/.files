@@ -1,0 +1,10 @@
+dist/index.cjs
+dist/index.cjs.map
+dist/index.d.ts
+dist/index.mjs
+dist/index.mjs.map
+dist/print.cjs
+dist/print.cjs.map
+dist/print.d.ts
+dist/print.mjs
+dist/print.mjs.map
