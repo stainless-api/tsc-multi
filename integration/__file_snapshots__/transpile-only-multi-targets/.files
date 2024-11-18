@@ -1,6 +1,6 @@
 dist/index.cjs
-dist/index.d.ts
+dist/index.d.mts
 dist/index.mjs
 dist/print.cjs
-dist/print.d.ts
+dist/print.d.mts
 dist/print.mjs

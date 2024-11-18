@@ -1,10 +1,12 @@
 dist/index.cjs
 dist/index.cjs.map
-dist/index.d.ts
+dist/index.d.cts
+dist/index.d.mts
 dist/index.mjs
 dist/index.mjs.map
 dist/print.cjs
 dist/print.cjs.map
-dist/print.d.ts
+dist/print.d.cts
+dist/print.d.mts
 dist/print.mjs
 dist/print.mjs.map

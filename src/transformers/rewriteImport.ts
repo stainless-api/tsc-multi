@@ -1,6 +1,7 @@
 import { resolve, dirname, extname } from "path";
 import type ts from "typescript";
 import { trimSuffix } from "../utils";
+import assert from "assert";
 
 const JS_EXT = ".js";
 const JSON_EXT = ".json";
@@ -15,9 +16,9 @@ export interface RewriteImportTransformerOptions {
   ts: typeof ts;
 }
 
-export function createRewriteImportTransformer(
-  options: RewriteImportTransformerOptions
-): ts.TransformerFactory<ts.SourceFile> {
+export function createRewriteImportTransformer<
+  T extends ts.SourceFile | ts.Bundle
+>(options: RewriteImportTransformerOptions): ts.TransformerFactory<T> {
   const {
     sys,
     factory,
@@ -124,8 +125,19 @@ export function createRewriteImportTransformer(
     };
 
     return (file) => {
-      sourceFile = file;
-      return visitNode(file, visitor) as ts.SourceFile;
+      if (options.ts.isSourceFile(file)) {
+        sourceFile = file;
+        return visitNode(file, visitor) as any;
+      } else if (options.ts.isBundle(file)) {
+        return ctx.factory.createBundle(
+          file.sourceFiles.map((file) => {
+            sourceFile = file;
+            return visitNode(file, visitor) as ts.SourceFile;
+          })
+        ) as any;
+      } else {
+        assert(false);
+      }
     };
   };
 }

@@ -31,6 +31,7 @@ afterEach(async () => {
 function runCLI(args: readonly string[] = [], options?: execa.Options) {
   return execa(join(__dirname, "../bin/tsc-multi.js"), args, {
     cwd: tmpDir.path,
+    stdout: "inherit",
     ...options,
   });
 }
@@ -468,10 +469,12 @@ describe("project references", () => {
 
     await runCLI([]);
 
+    await matchOutputFiles("project-references/only-esnext");
+
     const { exitCode } = await runCLI(["--clean"]);
     expect(exitCode).toEqual(0);
 
-    await matchOutputFiles("project-references/only-esnext");
+    expect(await listOutputFiles()).toEqual({});
   });
 });
 

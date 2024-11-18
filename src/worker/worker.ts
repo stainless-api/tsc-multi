@@ -13,6 +13,14 @@ import { dirname, extname, join } from "path";
 const JS_EXT = ".js";
 const MAP_EXT = ".map";
 const JS_MAP_EXT = `${JS_EXT}${MAP_EXT}`;
+const DTS_EXT = ".d.ts";
+const DTS_MAP_EXT = `${DTS_EXT}${MAP_EXT}`;
+
+const extnameDeclMap: Record<string, string> = {
+  ".js": ".d.ts",
+  ".mjs": ".d.mts",
+  ".cjs": ".d.cts",
+};
 
 type TS = typeof ts;
 
@@ -65,6 +73,22 @@ export class Worker {
     return trimSuffix(path, JS_MAP_EXT) + this.data.extname + MAP_EXT;
   }
 
+  private getDTSPath(path: string): string {
+    if (!this.data.extname) return path;
+
+    return trimSuffix(path, DTS_EXT) + extnameDeclMap[this.data.extname];
+  }
+
+  private getDTSMapPath(path: string): string {
+    if (!this.data.extname) return path;
+
+    return (
+      trimSuffix(path, DTS_MAP_EXT) +
+      extnameDeclMap[this.data.extname] +
+      MAP_EXT
+    );
+  }
+
   private rewritePath(path: string): string {
     if (path.endsWith(JS_EXT)) {
       return this.getJSPath(path);
@@ -72,6 +96,14 @@ export class Worker {
 
     if (path.endsWith(JS_MAP_EXT)) {
       return this.getJSMapPath(path);
+    }
+
+    if (path.endsWith(DTS_EXT)) {
+      return this.getDTSPath(path);
+    }
+
+    if (path.endsWith(DTS_MAP_EXT)) {
+      return this.getDTSMapPath(path);
     }
 
     return path;
@@ -90,14 +122,28 @@ export class Worker {
     return JSON.stringify(json);
   }
 
+  private rewriteDTSMappingURL(data: string): string {
+    return data.replace(
+      /\/\/# sourceMappingURL=(.+)/g,
+      (_, path) => `//# sourceMappingURL=${this.getDTSMapPath(path)}`
+    );
+  }
+
+  private rewriteDTSMap(data: string): string {
+    const json = JSON.parse(data);
+    json.file = this.getDTSPath(json.file);
+    return JSON.stringify(json);
+  }
+
   private createSystem(sys: Readonly<ts.System>): ts.System {
     const getReadPaths = (path: string) => {
-      const paths = [this.rewritePath(path)];
+      const inNodeModules = path.includes("/node_modules/");
+      const paths = [inNodeModules ? path : this.rewritePath(path)];
 
       // Source files may be .js files when `allowJs` is enabled. When a .js
       // file with rewritten path doesn't exist, retry again without rewriting
       // the path.
-      if (path.endsWith(JS_EXT)) {
+      if (!inNodeModules && (path.endsWith(JS_EXT) || path.endsWith(DTS_EXT))) {
         paths.push(path);
       }
 
@@ -129,6 +175,14 @@ export class Worker {
 
           if (path.endsWith(JS_MAP_EXT)) {
             return this.rewriteSourceMap(data);
+          }
+
+          if (path.endsWith(DTS_EXT)) {
+            return this.rewriteDTSMappingURL(data);
+          }
+
+          if (path.endsWith(DTS_MAP_EXT)) {
+            return this.rewriteDTSMap(data);
           }
 
           return data;
@@ -193,6 +247,13 @@ export class Worker {
 
     const transformers: ts.CustomTransformers = {
       after: [
+        createRewriteImportTransformer({
+          extname: this.data.extname || JS_EXT,
+          system: this.system,
+          ts: this.ts,
+        }),
+      ],
+      afterDeclarations: [
         createRewriteImportTransformer({
           extname: this.data.extname || JS_EXT,
           system: this.system,

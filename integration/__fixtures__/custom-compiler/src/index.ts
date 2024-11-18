@@ -9,3 +9,4 @@ interface Props {
 const keysOfProps = keys<Props>();
 
 print(keysOfProps);
+export type { keysOfProps, print };
