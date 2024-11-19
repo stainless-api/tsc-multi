@@ -67,7 +67,7 @@ async function listOutputFiles() {
 async function matchOutputFiles(name: string) {
   const files = await listOutputFiles();
 
-  expect(Object.keys(files).join("\n")).toMatchFile(
+  expect(Object.keys(files).sort().join("\n")).toMatchFile(
     join(__dirname, "__file_snapshots__", name, ".files")
   );
 
