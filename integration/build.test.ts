@@ -508,6 +508,36 @@ describe("nested folders", () => {
   });
 });
 
+describe("folder and file", () => {
+  beforeEach(async () => {
+    await copyInputFixture("folder-and-file");
+  });
+
+  test("multiple targets", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode } = await runCLI(["."]);
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("folder-and-file");
+
+    const expectedOutput = "Hello TypeScript";
+
+    // Check if the output files are executable
+    let result = await runCJSModule("dist/index.cjs");
+    expect(result.stdout).toEqual(expectedOutput);
+
+    // Check if the output files are executable
+    result = await runESMModule("dist/index.mjs");
+    expect(result.stdout).toEqual(expectedOutput);
+  });
+});
+
 describe("custom compiler", () => {
   beforeEach(async () => {
     await copyInputFixture("custom-compiler");

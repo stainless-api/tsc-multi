@@ -39,18 +39,19 @@ export function createRewriteImportTransformer<
     return sys.directoryExists(fullPath);
   }
 
+  function fileExists(sourceFile: ts.SourceFile, path: string): boolean {
+    const sourcePath = sourceFile.fileName;
+    const fullPath = resolve(dirname(sourcePath), path);
+
+    return sys.fileExists(fullPath);
+  }
+
   function updateModuleSpecifier(
     ctx: ts.TransformationContext,
     sourceFile: ts.SourceFile,
     node: ts.Expression
   ): ts.Expression {
     if (!isStringLiteral(node) || !isRelativePath(node.text)) return node;
-
-    if (isDirectory(sourceFile, node.text)) {
-      return factory.createStringLiteral(
-        `${node.text}/index${options.extname}`
-      );
-    }
 
     const ext = extname(node.text);
 
@@ -59,6 +60,18 @@ export function createRewriteImportTransformer<
     }
 
     const base = ext === JS_EXT ? trimSuffix(node.text, JS_EXT) : node.text;
+
+    if (
+      !(
+        fileExists(sourceFile, `${base}.ts`) ||
+        fileExists(sourceFile, `${base}.js`)
+      ) &&
+      isDirectory(sourceFile, node.text)
+    ) {
+      return factory.createStringLiteral(
+        `${node.text}/index${options.extname}`
+      );
+    }
 
     return factory.createStringLiteral(`${base}${options.extname}`);
   }
