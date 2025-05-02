@@ -8,7 +8,9 @@ import {
 } from "../utils";
 import { createRewriteImportTransformer } from "../transformers/rewriteImport";
 import { WorkerOptions } from "./types";
-import { dirname, extname, join } from "path";
+import { dirname, extname, join, resolve } from "path";
+import assert from "assert";
+import { helpers } from "../helpers";
 
 const JS_EXT = ".js";
 const MAP_EXT = ".map";
@@ -245,10 +247,15 @@ export class Worker {
   ) {
     const { createProgram, reportDiagnostic } = host;
 
+    const helpersNeeded = new Set<string>();
+    let resolvedShareHelpers: string | undefined;
+
     const transformers: ts.CustomTransformers = {
       after: [
         createRewriteImportTransformer({
           extname: this.data.extname || JS_EXT,
+          getResolvedShareHelpers: () => resolvedShareHelpers,
+          helpersNeeded,
           system: this.system,
           ts: this.ts,
         }),
@@ -256,6 +263,8 @@ export class Worker {
       afterDeclarations: [
         createRewriteImportTransformer({
           extname: this.data.extname || JS_EXT,
+          getResolvedShareHelpers: () => resolvedShareHelpers,
+          helpersNeeded,
           system: this.system,
           ts: this.ts,
         }),
@@ -284,6 +293,12 @@ export class Worker {
       );
       if (!config) return;
 
+      if (this.data.shareHelpers) {
+        const root = (this.ts as any).getCommonSourceDirectoryOfConfig(config);
+        config.options.importHelpers = true;
+        resolvedShareHelpers = resolve(root, this.data.shareHelpers);
+      }
+
       // Set separated tsbuildinfo paths to avoid that multiple workers to
       // access the same tsbuildinfo files and potentially read/write corrupted
       // tsbuildinfo files
@@ -309,17 +324,67 @@ export class Worker {
         emitOnlyDtsFiles,
         customTransformers
       ) => {
-        return emit(
+        const result = emit(
           targetSourceFile,
           writeFile,
           cancellationToken,
           emitOnlyDtsFiles,
           mergeCustomTransformers(customTransformers || {}, transformers)
         );
+
+        if (this.data.shareHelpers) {
+          const out = program.getCompilerOptions().outDir;
+          assert(out, "outDir must be set when specifying shareHelpers");
+          const write = writeFile || this.system.writeFile;
+          this.writeHelpers(
+            helpersNeeded,
+            write,
+            out,
+            program.getCompilerOptions()
+          );
+        }
+
+        return result;
       };
 
       return program;
     };
+  }
+
+  private writeHelpers(
+    helpersNeeded: Set<string>,
+    write: ts.WriteFileCallback,
+    out: string,
+    compilerOptions: ts.CompilerOptions
+  ) {
+    assert(this.data.shareHelpers);
+    const helperDeps = [...helpersNeeded].filter((e) => helpers[e]);
+    let helperLength = 0;
+    while (helperLength !== helperDeps.length) {
+      helperLength = helperDeps.length;
+      for (const helper of helperDeps) {
+        for (const dep of helpers[helper]?.deps || []) {
+          if (!helperDeps.includes(dep)) {
+            helperDeps.unshift(dep);
+          }
+        }
+      }
+    }
+    write(
+      resolve(out, this.data.shareHelpers),
+      this.ts.transpileModule(
+        helperDeps.map((name) => helpers[name].code).join("\n\n") +
+          `\n\nexport { ${[...helpersNeeded].join(", ")} };\n`,
+        {
+          compilerOptions: {
+            module: compilerOptions.module,
+          },
+          fileName: "helpers.js",
+          reportDiagnostics: false,
+        }
+      ).outputText,
+      false
+    );
   }
 
   private transpile() {
@@ -337,6 +402,7 @@ export class Worker {
       projectPath,
       tsConfigPath
     );
+
     const parseConfigFileHost: ts.ParseConfigFileHost = {
       ...this.system,
       onUnRecoverableConfigFileDiagnostic: this.reporter.reportDiagnostic,
@@ -349,11 +415,22 @@ export class Worker {
     );
     if (!config) return;
 
+    let resolvedShareHelpers: string | undefined;
+    if (this.data.shareHelpers) {
+      const root = (this.ts as any).getCommonSourceDirectoryOfConfig(config);
+      config.options.importHelpers = true;
+      resolvedShareHelpers = resolve(root, this.data.shareHelpers);
+    }
+
+    const helpersNeeded = new Set<string>();
+
     // TODO: Merge custom transformers
     const transformers: ts.CustomTransformers = {
       after: [
         createRewriteImportTransformer({
           extname: this.data.extname || JS_EXT,
+          getResolvedShareHelpers: () => resolvedShareHelpers,
+          helpersNeeded,
           system: this.system,
           ts: this.ts,
         }),
@@ -390,6 +467,17 @@ export class Worker {
       if (typeof output.sourceMapText === "string") {
         this.system.writeFile(sourceMapPath, output.sourceMapText);
       }
+    }
+
+    if (this.data.shareHelpers) {
+      const out = config.options.outDir;
+      assert(out, "outDir must be set when specifying shareHelpers");
+      this.writeHelpers(
+        helpersNeeded,
+        this.system.writeFile,
+        out,
+        config.options
+      );
     }
   }
 }

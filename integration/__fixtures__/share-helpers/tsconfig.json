@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "moduleResolution": "node",
+    "declaration": true,
+    "sourceMap": false,
+    "downlevelIteration": true,
+    "target": "ES5",
+    "esModuleInterop": true
+  }
+}
