@@ -72,12 +72,14 @@ tsc-multi --clean
 
 ### `targets`
 
-Build targets. All options except `extname` will override `compilerOptions` in `tsconfig.json`.
+Build targets. All options except `extname` and `shareHelpers` will override `compilerOptions` in `tsconfig.json`.
 
 ```js
 {
   // Rename the extension of output files
   extname: ".js",
+  // Emit all helpers to one file
+  shareHelpers: "helpers.js",
   // Skip type-checking (Experimental)
   transpileOnly: false,
   // Compiler options

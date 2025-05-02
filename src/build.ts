@@ -103,7 +103,7 @@ export async function build({
   const reportStyles = getReportStyles();
 
   const codes = await pAll(
-    targets.map(({ extname, transpileOnly, ...target }, i) => {
+    targets.map(({ extname, transpileOnly, shareHelpers, ...target }, i) => {
       const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
       const prefixStyle = reportStyles[i % reportStyles.length];
 
@@ -114,6 +114,7 @@ export async function build({
           stdout,
           stderr,
           extname,
+          shareHelpers,
           target,
           reportPrefix: prefixStyle(prefix),
           transpileOnly,

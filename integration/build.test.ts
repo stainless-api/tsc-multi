@@ -87,6 +87,73 @@ async function runESMModule(path: string) {
 
   return execa.node(join(tmpDir.path, path), []);
 }
+describe("shared helpers", () => {
+  beforeEach(async () => {
+    await copyInputFixture("share-helpers");
+  });
+
+  test("multiple targets", async () => {
+    await writeConfig({
+      targets: [
+        {
+          extname: ".cjs",
+          module: "commonjs",
+          shareHelpers: "helpers.cjs",
+        },
+        {
+          extname: ".mjs",
+          module: "esnext",
+          shareHelpers: "helpers.mjs",
+        },
+      ],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("share-helpers/multiple-targets");
+
+    // Check if the output files are executable
+    const resultCJS = await runCJSModule("dist/index.cjs");
+    expect(resultCJS.stdout).toEqual("Hello TypeScript\nHello tsc-multi");
+
+    // Check if the output files are executable
+    const resultMJS = await runESMModule("dist/index.mjs");
+    expect(resultMJS.stdout).toEqual("Hello TypeScript\nHello tsc-multi");
+  });
+
+  test("transpile only", async () => {
+    await writeConfig({
+      targets: [
+        {
+          extname: ".cjs",
+          module: "commonjs",
+          shareHelpers: "helpers.cjs",
+          transpileOnly: true,
+        },
+        {
+          extname: ".mjs",
+          module: "esnext",
+          shareHelpers: "helpers.mjs",
+          transpileOnly: true,
+        },
+      ],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("share-helpers/transpile-only");
+
+    // Check if the output files are executable
+    const resultCJS = await runCJSModule("dist/index.cjs");
+    expect(resultCJS.stdout).toEqual("Hello TypeScript\nHello tsc-multi");
+
+    // Check if the output files are executable
+    const resultMJS = await runESMModule("dist/index.mjs");
+    expect(resultMJS.stdout).toEqual("Hello TypeScript\nHello tsc-multi");
+  });
+});
 
 describe("single project", () => {
   beforeEach(async () => {
