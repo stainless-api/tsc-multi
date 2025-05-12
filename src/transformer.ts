@@ -1,11 +1,7 @@
 import { resolve, dirname, extname, relative } from "path";
 import type ts from "typescript";
-import { trimSuffix } from "../utils";
+import { trimSuffix } from "./utils";
 import assert from "assert";
-import {
-  isExternalModuleReference,
-  isImportEqualsDeclaration,
-} from "typescript";
 
 const JS_EXT = ".js";
 const JSON_EXT = ".json";
@@ -14,9 +10,10 @@ function isRelativePath(path: string): boolean {
   return path.startsWith("./") || path.startsWith("../");
 }
 
-export interface RewriteImportTransformerOptions {
+export interface TransformerOptions {
   extname: string;
   getResolvedShareHelpers(): string | undefined;
+  pureClassAssignment: boolean;
   helpersNeeded: Set<string>;
   system: ts.System;
   ts: typeof ts;
@@ -32,9 +29,9 @@ function nodeIsSynthesized(range: ts.TextRange): boolean {
   return positionIsSynthesized(range.pos) || positionIsSynthesized(range.end);
 }
 
-export function createRewriteImportTransformer<
-  T extends ts.SourceFile | ts.Bundle
->(options: RewriteImportTransformerOptions): ts.TransformerFactory<T> {
+export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
+  options: TransformerOptions
+): ts.TransformerFactory<T> {
   const {
     sys,
     factory,
@@ -146,8 +143,10 @@ export function createRewriteImportTransformer<
             (isImportDeclaration(original)
               ? isStringLiteral(original.moduleSpecifier) &&
                 original.moduleSpecifier.text === "tslib"
-              : isImportEqualsDeclaration(original) &&
-                isExternalModuleReference(original.moduleReference) &&
+              : options.ts.isImportEqualsDeclaration(original) &&
+                options.ts.isExternalModuleReference(
+                  original.moduleReference
+                ) &&
                 isStringLiteral(original.moduleReference.expression) &&
                 original.moduleReference.expression.text === "tslib")
           ) {
@@ -219,15 +218,114 @@ export function createRewriteImportTransformer<
       return visitEachChild(node, visitor, ctx);
     };
 
+    const pureClassAssignment = (sourceFile: ts.SourceFile) => {
+      if (!options.pureClassAssignment) return sourceFile;
+      const newStatements = [];
+      const classes: Record<
+        string,
+        [
+          ts.ClassDeclaration & { name: ts.Identifier },
+          ...ts.ExpressionStatement[]
+        ]
+      > = Object.create(null);
+      for (const statement of sourceFile.statements) {
+        if (
+          options.ts.isClassDeclaration(statement) &&
+          statement.name &&
+          !classes[statement.name.text]
+        ) {
+          newStatements.push(
+            (classes[statement.name.text] = [
+              statement as typeof statement & { name: ts.Identifier },
+            ])
+          );
+          continue;
+        } else if (
+          options.ts.isExpressionStatement(statement) &&
+          options.ts.isBinaryExpression(statement.expression) &&
+          statement.expression.operatorToken.kind === SyntaxKind.EqualsToken
+        ) {
+          if (
+            options.ts.isPropertyAccessExpression(statement.expression.left) &&
+            options.ts.isIdentifier(statement.expression.left.expression) &&
+            classes[statement.expression.left.expression.text]
+          ) {
+            classes[statement.expression.left.expression.text].push(statement);
+            continue;
+          } else if (
+            options.ts.isIdentifier(statement.expression.left) &&
+            options.ts.isIdentifier(statement.expression.right) &&
+            classes[statement.expression.right.text] &&
+            (statement.expression.left as any)?.emitNode?.autoGenerate
+          ) {
+            // _a = Cloudflare;
+            // Cloudflare.Cloudflare = _a;
+            classes[statement.expression.right.text].push(statement);
+            continue;
+          } else if (options.ts.isIdentifier(statement.expression.left)) {
+            // _BaseCloudflare_encoder = new WeakMap();
+            const cls = (statement.expression.left as any)?.emitNode
+              ?.autoGenerate?.prefix?.node?.text;
+            if (classes[cls]) {
+              classes[cls].push(statement);
+            }
+            continue;
+          }
+        }
+        newStatements.push(statement);
+      }
+      return ctx.factory.updateSourceFile(
+        sourceFile,
+        newStatements.map((group) =>
+          Array.isArray(group)
+            ? group.length === 1 &&
+              !group[0].members.some(
+                (member) =>
+                  member.name?.kind === SyntaxKind.ComputedPropertyName
+              )
+              ? group[0]
+              : ctx.factory.createVariableStatement(group[0].modifiers, [
+                  ctx.factory.createVariableDeclaration(
+                    group[0].name.text,
+                    undefined,
+                    undefined,
+                    options.ts.addSyntheticLeadingComment(
+                      ctx.factory.createImmediatelyInvokedArrowFunction([
+                        ctx.factory.updateClassDeclaration(
+                          group[0],
+                          [],
+                          group[0].name,
+                          group[0].typeParameters,
+                          group[0].heritageClauses,
+                          group[0].members
+                        ),
+                        ...group.slice(1),
+                        ctx.factory.createReturnStatement(
+                          ctx.factory.createIdentifier(group[0].name.text)
+                        ),
+                      ]),
+                      SyntaxKind.MultiLineCommentTrivia,
+                      " @__PURE__ ",
+                      false
+                    )
+                  ),
+                ])
+            : group
+        )
+      );
+    };
+
     return (file) => {
       if (options.ts.isSourceFile(file)) {
         sourceFile = file;
-        return visitNode(file, visitor) as any;
+        return pureClassAssignment(visitNode(file, visitor) as ts.SourceFile);
       } else if (options.ts.isBundle(file)) {
         return ctx.factory.createBundle(
           file.sourceFiles.map((file) => {
             sourceFile = file;
-            return visitNode(file, visitor) as ts.SourceFile;
+            return pureClassAssignment(
+              visitNode(file, visitor) as ts.SourceFile
+            );
           })
         ) as any;
       } else {

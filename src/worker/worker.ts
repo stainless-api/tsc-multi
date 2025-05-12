@@ -6,7 +6,7 @@ import {
   trimSuffix,
   isIncrementalCompilation,
 } from "../utils";
-import { createRewriteImportTransformer } from "../transformers/rewriteImport";
+import { createTransformer } from "../transformer";
 import { WorkerOptions } from "./types";
 import { dirname, extname, join, resolve } from "path";
 import assert from "assert";
@@ -252,8 +252,9 @@ export class Worker {
 
     const transformers: ts.CustomTransformers = {
       after: [
-        createRewriteImportTransformer({
+        createTransformer({
           extname: this.data.extname || JS_EXT,
+          pureClassAssignment: this.data.pureClassAssignment || false,
           getResolvedShareHelpers: () => resolvedShareHelpers,
           helpersNeeded,
           system: this.system,
@@ -261,8 +262,9 @@ export class Worker {
         }),
       ],
       afterDeclarations: [
-        createRewriteImportTransformer({
+        createTransformer({
           extname: this.data.extname || JS_EXT,
+          pureClassAssignment: this.data.pureClassAssignment || false,
           getResolvedShareHelpers: () => resolvedShareHelpers,
           helpersNeeded,
           system: this.system,
@@ -427,12 +429,13 @@ export class Worker {
     // TODO: Merge custom transformers
     const transformers: ts.CustomTransformers = {
       after: [
-        createRewriteImportTransformer({
+        createTransformer({
           extname: this.data.extname || JS_EXT,
           getResolvedShareHelpers: () => resolvedShareHelpers,
           helpersNeeded,
           system: this.system,
           ts: this.ts,
+          pureClassAssignment: this.data.pureClassAssignment || false,
         }),
       ],
     };

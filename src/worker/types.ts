@@ -4,6 +4,7 @@ export interface WorkerOptions {
   target: Omit<Target, "extname">;
   extname?: string;
   shareHelpers?: string;
+  pureClassAssignment?: boolean;
   verbose?: boolean;
   dry?: boolean;
   force?: boolean;

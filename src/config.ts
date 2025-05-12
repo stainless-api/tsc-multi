@@ -20,6 +20,7 @@ const debug = Debug.extend("config");
 const targetSchema = type({
   extname: optional(string()),
   shareHelpers: optional(string()),
+  pureClassAssignment: optional(boolean()),
   transpileOnly: optional(boolean()),
 });
 

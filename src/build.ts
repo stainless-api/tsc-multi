@@ -103,24 +103,36 @@ export async function build({
   const reportStyles = getReportStyles();
 
   const codes = await pAll(
-    targets.map(({ extname, transpileOnly, shareHelpers, ...target }, i) => {
-      const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
-      const prefixStyle = reportStyles[i % reportStyles.length];
-
-      return () => {
-        return runWorker({
-          ...options,
-          projects,
-          stdout,
-          stderr,
+    targets.map(
+      (
+        {
           extname,
-          shareHelpers,
-          target,
-          reportPrefix: prefixStyle(prefix),
           transpileOnly,
-        });
-      };
-    }),
+          shareHelpers,
+          pureClassAssignment,
+          ...target
+        },
+        i
+      ) => {
+        const prefix = `[${trimPrefix(extname || DEFAULT_EXTNAME, ".")}]: `;
+        const prefixStyle = reportStyles[i % reportStyles.length];
+
+        return () => {
+          return runWorker({
+            ...options,
+            projects,
+            stdout,
+            stderr,
+            extname,
+            shareHelpers,
+            pureClassAssignment,
+            target,
+            reportPrefix: prefixStyle(prefix),
+            transpileOnly,
+          });
+        };
+      }
+    ),
     { concurrency: maxWorkers }
   );
 
