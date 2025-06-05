@@ -264,7 +264,7 @@ export class Worker {
       afterDeclarations: [
         createTransformer({
           extname: this.data.extname || JS_EXT,
-          pureClassAssignment: this.data.pureClassAssignment || false,
+          pureClassAssignment: false,
           getResolvedShareHelpers: () => resolvedShareHelpers,
           helpersNeeded,
           system: this.system,
