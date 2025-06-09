@@ -279,9 +279,19 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
         newStatements.map((group) =>
           Array.isArray(group)
             ? group.length === 1 &&
-              !group[0].members.some(
-                (member) =>
-                  member.name?.kind === SyntaxKind.ComputedPropertyName
+              !(
+                group[0].members.some(
+                  (member) =>
+                    member.name?.kind === SyntaxKind.ComputedPropertyName
+                ) ||
+                group[0].heritageClauses?.some(
+                  (e) =>
+                    e.token === SyntaxKind.ExtendsKeyword &&
+                    isIdentifier(e.types[0].expression) &&
+                    /^(Object|Function|Array|Number|Boolean|String|Symbol|Date|Promise|RegExp|Error|AggregateError|EvalError|RangeError|ReferenceError|SyntaxError|TypeError|URIError|ArrayBuffer|Uint8Array|Int8Array|Uint16Array|Int16Array|Uint32Array|Int32Array|Float32Array|Float64Array|Uint8ClampedArray|BigUint64Array|BigInt64Array|DataView|Map|BigInt|Set|WeakMap|WeakSet|Proxy|FinalizationRegistry|WeakRef|URL|URLSearchParams|Event|EventTarget|Iterator|SharedArrayBuffer|CustomEvent)$/.test(
+                      e.types[0].expression.text
+                    )
+                )
               )
               ? group[0]
               : ctx.factory.createVariableStatement(group[0].modifiers, [
