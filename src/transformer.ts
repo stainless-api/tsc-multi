@@ -228,6 +228,40 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
           ...ts.ExpressionStatement[]
         ]
       > = Object.create(null);
+      const shouldGroupExpression = (
+        expression: ts.Expression
+      ): string | undefined => {
+        if (options.ts.isBinaryExpression(expression)) {
+          if (expression.operatorToken.kind === SyntaxKind.EqualsToken) {
+            if (
+              options.ts.isPropertyAccessExpression(expression.left) &&
+              options.ts.isIdentifier(expression.left.expression) &&
+              classes[expression.left.expression.text]
+            ) {
+              return expression.left.expression.text;
+            } else if (
+              options.ts.isIdentifier(expression.left) &&
+              options.ts.isIdentifier(expression.right) &&
+              classes[expression.right.text] &&
+              (expression.left as any)?.emitNode?.autoGenerate
+            ) {
+              return expression.right.text;
+            } else if (options.ts.isIdentifier(expression.left)) {
+              // _BaseCloudflare_encoder = new WeakMap();
+              const cls = (expression.left as any)?.emitNode?.autoGenerate
+                ?.prefix?.node?.text;
+              if (classes[cls]) {
+                return cls;
+              }
+            }
+          } else if (expression.operatorToken.kind === SyntaxKind.CommaToken) {
+            return (
+              shouldGroupExpression(expression.right) ||
+              shouldGroupExpression(expression.left)
+            );
+          }
+        }
+      };
       for (const statement of sourceFile.statements) {
         if (
           options.ts.isClassDeclaration(statement) &&
@@ -240,35 +274,10 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
             ])
           );
           continue;
-        } else if (
-          options.ts.isExpressionStatement(statement) &&
-          options.ts.isBinaryExpression(statement.expression) &&
-          statement.expression.operatorToken.kind === SyntaxKind.EqualsToken
-        ) {
-          if (
-            options.ts.isPropertyAccessExpression(statement.expression.left) &&
-            options.ts.isIdentifier(statement.expression.left.expression) &&
-            classes[statement.expression.left.expression.text]
-          ) {
-            classes[statement.expression.left.expression.text].push(statement);
-            continue;
-          } else if (
-            options.ts.isIdentifier(statement.expression.left) &&
-            options.ts.isIdentifier(statement.expression.right) &&
-            classes[statement.expression.right.text] &&
-            (statement.expression.left as any)?.emitNode?.autoGenerate
-          ) {
-            // _a = Cloudflare;
-            // Cloudflare.Cloudflare = _a;
-            classes[statement.expression.right.text].push(statement);
-            continue;
-          } else if (options.ts.isIdentifier(statement.expression.left)) {
-            // _BaseCloudflare_encoder = new WeakMap();
-            const cls = (statement.expression.left as any)?.emitNode
-              ?.autoGenerate?.prefix?.node?.text;
-            if (classes[cls]) {
-              classes[cls].push(statement);
-            }
+        } else if (options.ts.isExpressionStatement(statement)) {
+          const cls = shouldGroupExpression(statement.expression);
+          if (cls) {
+            classes[cls].push(statement);
             continue;
           }
         }
