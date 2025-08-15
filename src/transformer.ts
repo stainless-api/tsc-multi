@@ -4,6 +4,8 @@ import { trimSuffix } from "./utils";
 import assert from "assert";
 
 const JS_EXT = ".js";
+const MJS_EXT = ".mjs";
+const CJS_EXT = ".cjs";
 const JSON_EXT = ".json";
 
 function isRelativePath(path: string): boolean {
@@ -69,6 +71,10 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
     if (!isStringLiteral(node) || !isRelativePath(node.text)) return node;
 
     const ext = extname(node.text);
+
+    if (ext === MJS_EXT || ext === CJS_EXT) {
+      return node;
+    }
 
     if (ext === JSON_EXT && ctx.getCompilerOptions().resolveJsonModule) {
       return node;
