@@ -1,6 +1,6 @@
 {
   "name": "tsc-multi",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Compile multiple TypeScript projects into multiple targets.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,7 +13,7 @@
     "lint": "eslint . --ext .js,.ts,.jsx,.tsx",
     "clean": "rm -rf dist",
     "test": "npm-run-all test:*",
-    "test:integration": "jest --runInBand --config integration/jest.config.js"
+    "test:integration": "jest --config integration/jest.config.js"
   },
   "repository": {
     "type": "git",

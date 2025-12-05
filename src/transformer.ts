@@ -47,6 +47,8 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
     isExportDeclaration,
     isVariableStatement,
     isSourceFile,
+    isImportTypeNode,
+    isLiteralTypeNode,
   } = options.ts;
 
   function isDirectory(sourceFile: ts.SourceFile, path: string): boolean {
@@ -63,11 +65,11 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
     return sys.fileExists(fullPath);
   }
 
-  function updateModuleSpecifier(
+  function updateModuleSpecifier<T extends ts.Node>(
     ctx: ts.TransformationContext,
     sourceFile: ts.SourceFile,
-    node: ts.Expression
-  ): ts.Expression {
+    node: T
+  ): ts.LiteralExpression | T {
     if (!isStringLiteral(node) || !isRelativePath(node.text)) return node;
 
     const ext = extname(node.text);
@@ -160,9 +162,11 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
           }
         }
       }
+
       // ESM import
       if (isImportDeclaration(node)) {
-        return factory.createImportDeclaration(
+        return factory.updateImportDeclaration(
+          node,
           node.modifiers,
           node.importClause,
           updateModuleSpecifier(ctx, sourceFile, node.moduleSpecifier),
@@ -174,7 +178,8 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
       if (isExportDeclaration(node)) {
         if (!node.moduleSpecifier) return node;
 
-        return factory.createExportDeclaration(
+        return factory.updateExportDeclaration(
+          node,
           node.modifiers,
           node.isTypeOnly,
           node.exportClause,
@@ -191,7 +196,8 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
         const [firstArg, ...restArg] = node.arguments;
         if (!firstArg) return node;
 
-        return factory.createCallExpression(
+        return factory.updateCallExpression(
+          node,
           node.expression,
           node.typeArguments,
           [updateModuleSpecifier(ctx, sourceFile, firstArg), ...restArg]
@@ -207,7 +213,8 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
         const [firstArg, ...restArgs] = node.arguments;
         if (!firstArg) return node;
 
-        return factory.createCallExpression(
+        return factory.updateCallExpression(
+          node,
           node.expression,
           node.typeArguments,
           [
@@ -218,6 +225,19 @@ export function createTransformer<T extends ts.SourceFile | ts.Bundle>(
               : updateModuleSpecifier(ctx, sourceFile, firstArg),
             ...restArgs,
           ]
+        );
+      }
+
+      if (isImportTypeNode(node) && isLiteralTypeNode(node.argument)) {
+        return factory.updateImportTypeNode(
+          node,
+          factory.createLiteralTypeNode(
+            updateModuleSpecifier(ctx, sourceFile, node.argument.literal)
+          ),
+          node.attributes,
+          node.qualifier,
+          node.typeArguments,
+          node.isTypeOf
         );
       }
 

@@ -822,6 +822,34 @@ describe("dynamic import", () => {
   });
 });
 
+describe("type import", () => {
+  beforeEach(async () => {
+    await copyInputFixture("type-import");
+  });
+
+  test("success", async () => {
+    await writeConfig({
+      targets: [
+        { extname: ".cjs", module: "commonjs" },
+        { extname: ".mjs", module: "esnext" },
+      ],
+    });
+
+    const { exitCode } = await runCLI();
+    expect(exitCode).toEqual(0);
+
+    await matchOutputFiles("type-import");
+
+    // Check if the output files are executable
+    const cjsResult = await runCJSModule("dist/index.cjs");
+    expect(cjsResult.stdout).toEqual("Hello Type");
+
+    const esmResult = await runCJSModule("dist/index.mjs");
+    // eslint-disable-next-line jest/no-conditional-expect
+    expect(esmResult.stdout).toEqual("Hello Type");
+  });
+});
+
 describe("transpile only", () => {
   beforeEach(async () => {
     await copyInputFixture("transpile-only");
