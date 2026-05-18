@@ -1,4 +1,4 @@
-import yargs from "yargs/yargs";
+import yargs from "yargs";
 import { build } from "./build";
 import { loadConfig, resolveProjectPath } from "./config";
 
