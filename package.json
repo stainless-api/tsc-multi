@@ -1,12 +1,33 @@
 {
-  "name": "tsc-multi",
-  "version": "1.1.10",
+  "name": "@stainless-api/tsc-multi",
+  "version": "1.1.12",
   "description": "Compile multiple TypeScript projects into multiple targets.",
+  "keywords": [
+    "typescript",
+    "tsc",
+    "ts",
+    "compiler"
+  ],
+  "homepage": "https://github.com/stainless-api/tsc-multi#readme",
+  "bugs": {
+    "url": "https://github.com/stainless-api/tsc-multi/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/stainless-api/tsc-multi.git"
+  },
+  "license": "MIT",
+  "author": "Tommy Chen <tommy351@gmail.com>",
+  "type": "commonjs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "tsc-multi": "bin/tsc-multi.js"
   },
+  "files": [
+    "bin",
+    "dist"
+  ],
   "scripts": {
     "build": "node scripts/tslib.cjs && tsc -P tsconfig.build.json",
     "watch": "npm run build -- --watch",
@@ -14,37 +35,6 @@
     "clean": "rm -rf dist",
     "test": "npm-run-all test:*",
     "test:integration": "jest --config integration/jest.config.js"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tommy351/tsc-multi.git"
-  },
-  "keywords": [
-    "typescript",
-    "tsc",
-    "ts",
-    "compiler"
-  ],
-  "files": [
-    "bin",
-    "dist"
-  ],
-  "author": "Tommy Chen <tommy351@gmail.com>",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/tommy351/tsc-multi/issues"
-  },
-  "homepage": "https://github.com/tommy351/tsc-multi#readme",
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "*.{js,ts,jsx,tsx}": "eslint --fix"
-  },
-  "engines": {
-    "node": ">=14"
   },
   "dependencies": {
     "debug": "^4.3.7",
@@ -70,7 +60,7 @@
     "@types/yargs": "^17.0.33",
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
-    "esbuild": "^0.10.0",
+    "esbuild": "0.10.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^8.10.0",
     "eslint-plugin-jest": "^27.9.0",
@@ -95,6 +85,17 @@
   },
   "peerDependencies": {
     "typescript": ">=4.3.0"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{js,ts,jsx,tsx}": "eslint --fix"
   },
   "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee"
 }

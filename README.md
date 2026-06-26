@@ -1,6 +1,6 @@
 # tsc-multi
 
-[![](https://img.shields.io/npm/v/tsc-multi.svg)](https://www.npmjs.com/package/tsc-multi) ![Test](https://github.com/tommy351/tsc-multi/workflows/Test/badge.svg)
+[![](https://img.shields.io/npm/v/tsc-multi.svg)](https://www.npmjs.com/package/tsc-multi) ![Test](https://github.com/stainless-api/tsc-multi/workflows/Test/badge.svg)
 
 Compile multiple TypeScript projects into multiple targets.
 
